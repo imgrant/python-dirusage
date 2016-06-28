@@ -8,16 +8,16 @@ Additional parameters allow the recursion to go deeper, displayed as a tree, and
 Folders are automatically sorted by size.
 
 ## Summary
-usage: dirusage [-h] [-d MAX_DEPTH] [-s MIN_SIZE] [-v] path
-
-positional arguments:
-  path                  root folder to calculate the tree for
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -d MAX_DEPTH, --max-depth MAX_DEPTH
-                        maximum recursion depth to draw the tree to (default
-                        is 1, immediate sub-dirs only)
-  -s MIN_SIZE, --min-size MIN_SIZE
-                        minimum folder size (MB) to draw branches for
-  -v, --version         show program's version number and exit
+    usage: dirusage [-h] [-d MAX_DEPTH] [-s MIN_SIZE] [-v] path
+    
+    positional arguments:
+        path                  root folder to calculate the tree for
+    
+    optional arguments:
+        -h, --help            show this help message and exit
+        -d MAX_DEPTH, --max-depth MAX_DEPTH
+                              maximum recursion depth to draw the tree to (default
+                              is 1, immediate sub-dirs only)
+        -s MIN_SIZE, --min-size MIN_SIZE
+                              minimum folder size (MB) to draw branches for
+        -v, --version         show program's version number and exit
