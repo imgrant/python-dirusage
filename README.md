@@ -8,7 +8,7 @@ Additional parameters allow the recursion to go deeper, displayed as a tree, and
 Folders are automatically sorted by size.
 
 ## Summary
-    usage: dirusage [-h] [-d MAX_DEPTH] [-s MIN_SIZE] [-v] path
+    usage: dirusage [-h] [-d MAX_DEPTH] [-s MIN_SIZE] [-c] [-v] path
     
     positional arguments:
         path                  root folder to calculate the tree for
@@ -20,4 +20,5 @@ Folders are automatically sorted by size.
                               is 1, immediate sub-dirs only)
         -s MIN_SIZE, --min-size MIN_SIZE
                               minimum folder size (MB) to draw branches for
+        -c, --colorize        colorize the output
         -v, --version         show program's version number and exit
