@@ -16,13 +16,15 @@
 from sys import exit
 import os
 from os import scandir
-from os.path import abspath, basename, isdir
+from os.path import abspath, isdir
 import argparse
 from datetime import datetime as dt
+import re
+from termcolor import colored
 
 __prog__    = "dirusage"
 __desc__    = "Show disk usage for sub-dirs of a folder"
-__version__ = "1.0"
+__version__ = "1.1"
 
 
 def tree(dir,
@@ -30,16 +32,21 @@ def tree(dir,
          min_size=0,
          padding='',
          isLast=False,
-         isFirst=True):
+         isFirst=True,
+         start_depth=None):
     depth = dir.count(os.sep)
+    if start_depth is None:
+        start_depth = depth
+    if isFirst:
+        max_depth = depth + max_depth
     if (max_depth is not None and depth >= max_depth):
         return
 
     pre_padding = '           '
-    if depth > 1:
+    if depth > (start_depth + 1):
         padding = padding + '                  '
 
-    dirs = [x for x in scandir(dir) if x.is_dir()]    
+    dirs = [x for x in scandir(dir) if x.is_dir()]
     dirs = sorted((d for d in dirs if dir_size(d.path) >= (min_size * 1024**2)),
                     key=lambda s: dir_size(s.path),
                     reverse=True)
@@ -50,7 +57,7 @@ def tree(dir,
         path = dir + os.sep + f.name
         isLast = i == last
         if isFirst:
-            print(' ' + human(dir_size(f.path)) + '  ' + f.name)
+            print(' ' + human(dir_size(f.path)) + '  ' + prettify(f.name, "white", attrs=['bold']))
         else:
             if isLast:
                 print(pre_padding + padding[:-1] + '└── ' + '[ ' + human(dir_size(f.path)) + ' ]  ' + f.name)
@@ -58,12 +65,12 @@ def tree(dir,
                 print(pre_padding + padding[:-1] + '├── ' + '[ ' + human(dir_size(f.path)) + ' ]  ' + f.name)
         if isdir(path):
             if count == len(dirs):
-                tree(path, max_depth, min_size, padding[:-1] + ' ', isLast, False)
+                tree(path, max_depth, min_size, padding[:-1] + ' ', isLast, False, start_depth)
             else:
                 if isFirst:
-                    tree(path, max_depth, min_size, padding, isLast, False)
+                    tree(path, max_depth, min_size, padding, isLast, False, start_depth)
                 else:
-                    tree(path, max_depth, min_size, padding[:-1] + '│', isLast, False)
+                    tree(path, max_depth, min_size, padding[:-1] + '│', isLast, False, start_depth)
     return 0
 
 
@@ -77,22 +84,65 @@ def dir_size(path):
     return size
 
 
-def human(size):
+def human(size, colorize=True, whole_numbers=False):
     B  = "B"
     KB = "KB"
     MB = "MB"
     GB = "GB"
     TB = "TB"
     UNITS = [B, KB, MB, GB, TB]
-    HUMANFMT = "%5.1f % 2s"
     HUMANRADIX = 1024.
 
+    if whole_numbers:
+        format_string = '{: >3.0f} {: >2s}'
+    else:
+        format_string = '{: >5.1f} {: >2s}'
+
+    if size > 500*(1024**3):
+        # > 500 GB
+        color = 'red'
+        bg = None
+    elif size > 100*(1024**3):
+        # > 100 GB
+        color = 'magenta'
+        bg = None
+    elif size > 10*(1024**3):
+        # > 10 GB
+        color = 'yellow'
+        bg = None
+    elif size > 1*(1024**3):
+        # > 1 GB
+        color = 'green'
+        bg = None
+    elif size > 100*(1024**2):
+        # > 100 MB
+        color = 'blue'
+        bg = None
+    else:
+        color = None
+        bg = None
+
+    human_string = None
     for u in UNITS[:-1]:
         if size < HUMANRADIX:
-            return HUMANFMT % (size, u)
+            human_string = format_string.format(size, u)
+            break
         size /= HUMANRADIX
 
-    return HUMANFMT % (size, UNITS[-1])
+    if human_string is None:
+        human_string = format_string.format(size, UNITS[-1])
+
+    if colorize:
+        return prettify(human_string, color, bg)
+    else:
+        return human_string
+
+
+def prettify(msg, color=None, bg=None, attrs=[]):
+    if pretty:
+        return colored(msg, color, bg, attrs)
+    else:
+        return msg
 
 
 def main():
@@ -107,6 +157,9 @@ def main():
             "-s", "--min-size", action="store", default=0, type=float,
             help="minimum folder size (MB) to draw branches for")
         parser.add_argument(
+            "-c", "--colorize", action="store_true", default=False,
+            help="colorize the output")
+        parser.add_argument(
             "-v", "--version", action='version',
             version='%(prog)s {version}'.format(version=__version__))
         args = parser.parse_args()
@@ -115,13 +168,27 @@ def main():
             parser.error("'" + args.path + "' is not a directory")
             return 1
 
-        print("Current usage for " + abspath(args.path) + " at " + dt.now().strftime("%a %b %d %Y %H:%M:"))
+        global pretty
+        pretty = args.colorize
+
+        print("Current usage for " + prettify(abspath(args.path), "white", attrs=['bold']) + " at " + dt.now().strftime("%a %b %d %Y %H:%M"))
+        print(prettify("(Showing folders bigger than " +
+                      re.sub('^\s*([0-9.]+ [KMGT]?B)\s*$', '\g<1>', human(args.min_size * (1024**2), colorize=False, whole_numbers=True)) +
+                      " up to " +
+                      str(args.max_depth) +
+                      (" level " if (args.max_depth == 1) else " levels ") +
+                      "deep)",
+                      'cyan'
+             )
+        )
+        print()
         tree(dir=args.path, max_depth=args.max_depth, min_size=args.min_size)
 
         s = os.statvfs(args.path)
+        print()
         print(' --------  ----------------')
-        print(' ' + human(dir_size(args.path)) + '  ' + 'total usage')
-        print(' ' + human(s.f_bavail * s.f_frsize) + '  ' + 'free space remaining')
+        print(' ' + human(dir_size(args.path), False) + '  ' + 'total usage')
+        print(' ' + human(s.f_bavail * s.f_frsize, False) + '  ' + 'free space remaining')
 
         return 0
 
